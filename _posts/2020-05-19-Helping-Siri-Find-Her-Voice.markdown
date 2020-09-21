@@ -22,7 +22,8 @@ Apple encrypts each app with their [FairPlay DRM][fairplay], so rather than pain
 A list of apps can be found using: `bagbak -l`
 
 The UE Boom app can be dumped using: `bagbak -o "UEBoom" com.logitech.ue.ueboom`
-{% asciinema_play 332206 %}
+
+![Dumping the app binaries](/blog/assets/asciinema/dumping.svg)
 
 
 ### Aside: Bluetooth Low Energy
@@ -31,7 +32,7 @@ As mentioned above, how does the speaker provide a power on function without usi
 
 Once a central and peripheral are connected they can now communicate information, the two main focuses for understanding how the UE Boom speaker uses BLE are Services and Characteristics. A Service is a group of one or more attributes, or Characteristics, that satisfy a certain functionality. A Characteristic is a part of a service that represents a specific type of information such as the device name or battery level which has a specific UUID to address it.
 
-![Peripheral General Diagram](/assets/images/peripheral-structure.png)
+![Peripheral General Diagram](/blog/assets/images/peripheral-structure.png)
 
 This is an incredibly brief overview of BLE designed only to give the basic understanding required for reverse engineering the protocol of a UE Boom speaker. A more in-depth explanation can be found [here][ble-indepth].
 
