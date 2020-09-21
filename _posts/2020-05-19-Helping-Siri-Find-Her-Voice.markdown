@@ -42,26 +42,26 @@ Now that we have a general idea of how BLE works, we can start analysis of the s
 
 After examining the service there are some interesting characteristics such as "Device Name", and "Serial Number". We will come back to these later.
 
-![LightBlue Service Lister](/assets/images/lightbluedevices.png)|![LightBlue Characteristics](/assets/images/lightbluecharacteristics.png)
+![LightBlue Service Lister](/blog/assets/images/lightbluedevices.png)|![LightBlue Characteristics](/blog/assets/images/lightbluecharacteristics.png)
 
 Now, loading the app binary, `UEBoom/com.logitech.ue.ueboom/Payload/menhum.app/menhum`, into IDA we can start poking around in the internal functions.
 
 Once IDA has loaded the binary and analyzed all the Objective C function names we can search for all classes containing "BLE"
 
-![IDA BLE Listing](/assets/images/idablelisting.png)
+![IDA BLE Listing](/blog/assets/images/idablelisting.png)
 
 As we can see there is one particular class that refers specifically to BLE and after looking through some functions, we can see a large number of references to a class called "Samurai" which is not in the binary, a few minutes of googling yields no results, so our next step is to look at the frameworks
 
-![UEBoom Frameworks](/assets/images/ueboomframeworks.png)
+![UEBoom Frameworks](/blog/assets/images/ueboomframeworks.png)
 
 The `UEComm` framework looks interesting, analyzing the binary contained yields our Samurai class!
 
-![IDA Samurai Listing](/assets/images/idasamurailisting.png)
+![IDA Samurai Listing](/blog/assets/images/idasamurailisting.png)
 
 ### Step 3: Analyzing the BLE Protocol
 Poking around the Samurai class we can see it implements the `CBCentralManagerDelegate` which, from Apple's documentation calls the `didDiscoverPeripheral` when a peripheral is discovered, searching for this function yields two classes `Samurai` and `NouveauSamurai`, based on my tenuous knowledge of French, I'm guessing `NouveauSamurai` is the class to examine
 
-![IDA didDiscover](/assets/images/idadiscoverperipherallisting.png)
+![IDA didDiscover](/blog/assets/images/idadiscoverperipherallisting.png)
 
 Delving into these functions we can see the steps to identify if the peripheral is a valid speaker based on the advertisement data and if so returns the bluetooth address of the speaker. The follwing python snippet outlines the procedure:
 
@@ -69,7 +69,7 @@ Delving into these functions we can see the steps to identify if the peripheral 
 
 Our next steps are to identify what the characteristics found using LightBlue correspond to, all `CBCentralManagerDelegate` can implement `didDiscoverCharacteristicsForService` and examining this function for the `NouveauSamurai` class, gives us this pseudocode snippet.
 
-![IDA Characteritics](/assets/images/idaidentifycharacteristics.png)
+![IDA Characteritics](/blog/assets/images/idaidentifycharacteristics.png)
 
 Although the code looks somewhat intimidating, the actual logic flow is quite simple, the function essentially checks the characteristic identifier and if it is equal to a defined characteristic it calls the function to set it for the device. The function continues the same template the entire way through to provide a list of BLE function, which are listed in table below. Comparing these identifiers to the characteristics found in the LightBlue app we can see they are the same!
 
@@ -90,14 +90,14 @@ Although the code looks somewhat intimidating, the actual logic flow is quite si
 ### Powering On
 Now that we have identified the characteristics provided by the speaker we can turn the speaker on, our best bet is probably whichever function uses the characteristic with the UUID `c6d6dc0d-07f5-47ef-9b59-630622b01fd3`, or the power on characteristic. Looking for references to this UUID we come across a function called `-[NouveauSamurai callPowerOnCommandWithForcedConection:returnBlock:]`
 
-![Power On Function Pseudocode](/assets/images/idapoweronpseudocode.png)
+![Power On Function Pseudocode](/blog/assets/images/idapoweronpseudocode.png)
 
 From the pseudocode above we can see that to turn the speaker on the app sends the devices bluetooth MAC address with `01` appended to the power characteristic. We can test this using the LightBlue app... and success!
 
 ### Communicating with a Connected Speaker
 Once the speaker is connected we have to figure out how to communicate with the speaker to perform actions such as changing the speaker name, and powering off. This will occur over bluetooth core as opposed to BLE. Sifting through the class names on particular class stands out, `EASessionManager`. While google yields no result, an EA session hints that UE is using Apple's ExternalAccessory framework to communicate with a connected speaker, this can be confirmed by looking through the `Info.plist` file for `UISupportedExternalAccessoryProtocols`.
 
-![Message Building Procedure](/assets/images/idabuildmessage.png)
+![Message Building Procedure](/blog/assets/images/idabuildmessage.png)
 
 Now that we know the framework the devices communicate with we need to understand the protocol, examining the pseudocode above of the function `-[UEMessage buildRequestData]`, we know that each message will have the following structure
 
@@ -113,7 +113,7 @@ To check the messages being sent and received match our reversed protocol we can
 
 {% gist 02a61422e426273072b1de9f6c1b7da4 %}
 
-![Frida Script Output](/assets/images/messagedump.png)
+![Frida Script Output](/blog/assets/images/messagedump.png)
 
 Success! Our reversed protocol matches the messages being sent.
 
